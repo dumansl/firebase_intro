@@ -20,7 +20,7 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
     _registerPage ? _register() : _login();
   }
 
-  Future<void> _register() async {
+  void _register() async {
     try {
       await _authService.createUserWithEmailAndPassword(
         email: _email,
@@ -38,7 +38,7 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
     }
   }
 
-  Future<void> _login() async {
+  void _login() async {
     try {
       await _authService.signInWithEmailAndPassword(
         email: _email,

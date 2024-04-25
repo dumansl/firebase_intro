@@ -10,7 +10,7 @@ class AuthService {
       await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
     } on FirebaseAuthException catch (error) {
-      debugPrint(error.toString());
+      debugPrint("Hata : ${error.toString()}");
     }
   }
 
@@ -21,8 +21,9 @@ class AuthService {
     try {
       await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
+      debugPrint("$email , $password");
     } on FirebaseAuthException catch (error) {
-      debugPrint(error.toString());
+      debugPrint("Hata : ${error.toString()}");
     }
   }
 }

@@ -57,5 +57,3 @@ app.*.map.json
 ios/**/*.cer
 ios/**/*.p12
 ios/**/Profile/*.mobileprovision
-
-/lib/firebase_options.dart

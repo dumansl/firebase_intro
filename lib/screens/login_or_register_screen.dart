@@ -1,3 +1,4 @@
+import 'package:firebase_intro/screens/home_screen.dart';
 import 'package:firebase_intro/services/auth_service.dart';
 import 'package:firebase_intro/widget/snack_bar.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +11,7 @@ class LoginOrRegisterScreen extends StatefulWidget {
 }
 
 class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
-  final AuthService _authService = AuthService();
+  final AuthService authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   String _email = "";
   String _password = "";
@@ -21,37 +22,47 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
   }
 
   void _register() async {
-    try {
-      await _authService.createUserWithEmailAndPassword(
-        email: _email,
-        password: _password,
-      );
-      if (mounted) {
-        snackBar(context, 'Başarılı şekilde tamamlandı.',
-            bgColor: Colors.green);
-      }
-    } catch (e) {
-      debugPrint(e.toString());
-      if (mounted) {
-        snackBar(context, 'Kullanıcı kaydedilirken bir hata oluştu.');
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      String? userId =
+          await authService.signUpWithEmailAndPassword(_email, _password);
+      if (userId != null) {
+        if (mounted) {
+          snackBar(context, "Kayıt başarılı! Kullanıcı ID: $userId",
+              bgColor: Colors.green);
+        }
+      } else {
+        if (mounted) {
+          snackBar(
+              context, "Kayıt olurken bir hata oluştu! Lütfen tekrar deneyin.");
+        }
       }
     }
   }
 
   void _login() async {
-    try {
-      await _authService.signInWithEmailAndPassword(
-        email: _email,
-        password: _password,
-      );
-      if (mounted) {
-        snackBar(context, 'Başarılı şekilde giriş yapıldı.',
-            bgColor: Colors.green);
-      }
-    } catch (e) {
-      debugPrint(e.toString());
-      if (mounted) {
-        snackBar(context, 'Kullanıcı giriş yaparken bir hata oluştu.');
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      String? userId =
+          await authService.signInWithEmailAndPassword(_email, _password);
+      if (userId != null) {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HomeScreen(),
+            ),
+          );
+          snackBar(context, "Giriş başarılı! Kullanıcı ID: $userId",
+              bgColor: Colors.green);
+        }
+      } else {
+        if (mounted) {
+          snackBar(
+            context,
+            "Giriş yaparken bir hata oluştu! Lütfen tekrar deneyin.",
+          );
+        }
       }
     }
   }

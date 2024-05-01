@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:firebase_intro/screens/home_screen.dart';
 import 'package:firebase_intro/services/auth_service.dart';
 import 'package:firebase_intro/widget/snack_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class LoginOrRegisterScreen extends StatefulWidget {
   const LoginOrRegisterScreen({super.key});
@@ -15,7 +18,26 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   String _email = "";
   String _password = "";
+  String _name = "";
+  String _lastName = "";
+  String _avatarUrl = "";
   bool _registerPage = true;
+  XFile? selectedImage;
+
+  void _pickImage() async {
+    final imagePicker = ImagePicker();
+    XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
+
+    setState(() {
+      selectedImage = file;
+    });
+
+    if (file != null) {
+      setState(() {
+        _avatarUrl = "abc";
+      });
+    }
+  }
 
   void _submit() async {
     _registerPage ? _register() : _login();
@@ -24,8 +46,8 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
   void _register() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      String? userId =
-          await authService.signUpWithEmailAndPassword(_email, _password);
+      String? userId = await authService.createUserWithEmailAndPassword(
+          _email, _password, _name, _lastName, _avatarUrl);
       if (userId != null) {
         if (mounted) {
           snackBar(context, "Kayıt başarılı! Kullanıcı ID: $userId",
@@ -76,50 +98,90 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(_registerPage ? "Kayıt Ol" : "Giriş Yap"),
-                const SizedBox(height: 8),
-                TextFormField(
-                  decoration: const InputDecoration(labelText: "E-posta"),
-                  autocorrect: false,
-                  keyboardType: TextInputType.emailAddress,
-                  onSaved: (newValue) {
-                    _email = newValue!;
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  decoration: const InputDecoration(labelText: "Şifre"),
-                  autocorrect: false,
-                  obscureText: true,
-                  onSaved: (newValue) {
-                    _password = newValue!;
-                  },
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    _formKey.currentState!.save();
-                    _submit();
-                  },
-                  child: Text(_registerPage ? "Kayıt Ol" : "Giriş Yap"),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_registerPage ? "Kayıt Ol" : "Giriş Yap"),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: selectedImage != null
+                            ? Image.file(File(selectedImage!.path)).image
+                            : null,
+                        child: selectedImage == null
+                            ? const Icon(Icons.add_a_photo, size: 40)
+                            : null),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: "E-posta"),
+                    autocorrect: false,
+                    keyboardType: TextInputType.emailAddress,
+                    onSaved: (newValue) {
+                      _email = newValue!;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: "Şifre"),
+                    autocorrect: false,
+                    obscureText: true,
+                    onSaved: (newValue) {
+                      _password = newValue!;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  if (_registerPage)
+                    Column(
+                      children: [
+                        TextFormField(
+                          decoration: const InputDecoration(labelText: "İsim"),
+                          autocorrect: false,
+                          onSaved: (newValue) {
+                            _name = newValue!;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          decoration:
+                              const InputDecoration(labelText: "Soyisim"),
+                          autocorrect: false,
+                          onSaved: (newValue) {
+                            _lastName = newValue!;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ElevatedButton(
                     onPressed: () {
-                      setState(() {
-                        _formKey.currentState!.reset();
-                        _registerPage = !_registerPage;
-                      });
+                      _formKey.currentState!.save();
+                      _submit();
+                    },
+                    child: Text(_registerPage ? "Kayıt Ol" : "Giriş Yap"),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      setState(
+                        () {
+                          _formKey.currentState!.reset();
+                          _registerPage = !_registerPage;
+                        },
+                      );
                     },
                     child: Text(_registerPage
                         ? "Zaten üye misiniz? Giriş Yap"
-                        : "Hesabınız yok mu? Kayıt Ol"))
-              ],
+                        : "Hesabınız yok mu? Kayıt Ol"),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

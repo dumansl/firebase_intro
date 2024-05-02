@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  User? user;
+  User? loggedInUser = FirebaseAuth.instance.currentUser;
 
   // Kaydolma işlemi
-  Future<String?> createUserWithEmailAndPassword(String email, String password,
-      String name, String lastName, String avatarUrl) async {
+  Future<String?> createUserWithEmailAndPassword(
+      String email, String password, String name, String lastName) async {
     try {
       UserCredential userCredential =
           await _auth.createUserWithEmailAndPassword(
@@ -15,16 +17,16 @@ class AuthService {
         password: password,
       );
 
-      User? user = userCredential.user;
+      user = userCredential.user;
 
       if (user != null) {
         FirebaseFirestore db = FirebaseFirestore.instance;
-        await db.collection("users").doc(user.uid).set(
+        await db.collection("users").doc(user!.uid).set(
           {
             'firstName': name,
             'lastName': lastName,
             'email': email,
-            "avatarUrl": avatarUrl,
+            "avatarUrl": "",
             'registerDate': DateTime.now()
           },
         );
@@ -45,7 +47,7 @@ class AuthService {
         email: email,
         password: password,
       );
-      User? user = userCredential.user;
+      user = userCredential.user;
       return user?.uid;
     } catch (e) {
       debugPrint("Giriş hatası: $e");
@@ -59,6 +61,21 @@ class AuthService {
       await _auth.signOut();
     } catch (e) {
       debugPrint("Çıkış hatası: $e");
+    }
+  }
+
+  //Avatar ekleme
+  Future<void> addedAvatarUrl({
+    required String avatarUrl,
+  }) async {
+    try {
+      FirebaseFirestore db = FirebaseFirestore.instance;
+      await db
+          .collection("users")
+          .doc(loggedInUser!.uid)
+          .set({"avatarUrl": avatarUrl}, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Avatar URL ekleme hatası: $e");
     }
   }
 }

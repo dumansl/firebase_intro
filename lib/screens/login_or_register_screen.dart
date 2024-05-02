@@ -1,10 +1,7 @@
-import 'dart:io';
-
 import 'package:firebase_intro/screens/home_screen.dart';
 import 'package:firebase_intro/services/auth_service.dart';
 import 'package:firebase_intro/widget/snack_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 class LoginOrRegisterScreen extends StatefulWidget {
   const LoginOrRegisterScreen({super.key});
@@ -20,24 +17,8 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
   String _password = "";
   String _name = "";
   String _lastName = "";
-  String _avatarUrl = "";
+
   bool _registerPage = true;
-  XFile? selectedImage;
-
-  void _pickImage() async {
-    final imagePicker = ImagePicker();
-    XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
-
-    setState(() {
-      selectedImage = file;
-    });
-
-    if (file != null) {
-      setState(() {
-        _avatarUrl = "abc";
-      });
-    }
-  }
 
   void _submit() async {
     _registerPage ? _register() : _login();
@@ -47,7 +28,7 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       String? userId = await authService.createUserWithEmailAndPassword(
-          _email, _password, _name, _lastName, _avatarUrl);
+          _email, _password, _name, _lastName);
       if (userId != null) {
         if (mounted) {
           snackBar(context, "Kayıt başarılı! Kullanıcı ID: $userId",
@@ -105,19 +86,6 @@ class _LoginOrRegisterScreenState extends State<LoginOrRegisterScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(_registerPage ? "Kayıt Ol" : "Giriş Yap"),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: selectedImage != null
-                            ? Image.file(File(selectedImage!.path)).image
-                            : null,
-                        child: selectedImage == null
-                            ? const Icon(Icons.add_a_photo, size: 40)
-                            : null),
-                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     decoration: const InputDecoration(labelText: "E-posta"),

@@ -1,11 +1,17 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_intro/models/user_model.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  User? user;
-  User? loggedInUser = FirebaseAuth.instance.currentUser;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
+
+  User? get currentUser => _auth.currentUser;
 
   // Kaydolma işlemi
   Future<String?> createUserWithEmailAndPassword(
@@ -17,11 +23,10 @@ class AuthService {
         password: password,
       );
 
-      user = userCredential.user;
+      User? user = userCredential.user;
 
       if (user != null) {
-        FirebaseFirestore db = FirebaseFirestore.instance;
-        await db.collection("users").doc(user!.uid).set(
+        await _db.collection("users").doc(user.uid).set(
           {
             'firstName': name,
             'lastName': lastName,
@@ -47,7 +52,7 @@ class AuthService {
         email: email,
         password: password,
       );
-      user = userCredential.user;
+      User? user = userCredential.user;
       return user?.uid;
     } catch (e) {
       debugPrint("Giriş hatası: $e");
@@ -64,18 +69,38 @@ class AuthService {
     }
   }
 
-  //Avatar ekleme
-  Future<void> addedAvatarUrl({
-    required String avatarUrl,
-  }) async {
+  // Kullanıcı bilgilerini getirme
+  Future<UserModel?> getUser() async {
     try {
-      FirebaseFirestore db = FirebaseFirestore.instance;
-      await db
-          .collection("users")
-          .doc(loggedInUser!.uid)
-          .set({"avatarUrl": avatarUrl}, SetOptions(merge: true));
+      if (currentUser != null) {
+        var userInfo =
+            await _db.collection("users").doc(currentUser!.uid).get();
+        var userJson = userInfo.data();
+        return UserModel.fromMap(userJson!);
+      }
     } catch (e) {
-      debugPrint("Avatar URL ekleme hatası: $e");
+      debugPrint("Kullanıcı bilgisi getirme hatası: $e");
+    }
+    return null;
+  }
+
+  // Avatar yükleme
+  Future<String?> uploadImage({required File selectedAvatar}) async {
+    try {
+      final avatarPath =
+          _storage.ref().child("avatars").child("${currentUser!.uid}.jpg");
+      await avatarPath.putFile(selectedAvatar);
+      final url = await avatarPath.getDownloadURL();
+
+      await _db
+          .collection("users")
+          .doc(currentUser!.uid)
+          .update({'avatarUrl': url});
+
+      return url;
+    } catch (e) {
+      debugPrint("Avatar yükleme hatası: $e");
+      return null;
     }
   }
 }

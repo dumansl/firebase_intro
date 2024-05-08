@@ -31,7 +31,6 @@ class AuthService {
             'firstName': name,
             'lastName': lastName,
             'email': email,
-            "avatarUrl": "",
             'registerDate': DateTime.now()
           },
         );

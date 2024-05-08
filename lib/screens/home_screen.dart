@@ -1,9 +1,10 @@
 import 'dart:io';
 
-import 'package:firebase_intro/widget/snack_bar.dart';
+import 'package:firebase_intro/models/user_model.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_intro/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_intro/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,46 +14,89 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final AuthService authService = AuthService();
-  XFile? selectedImage;
-  String avatarUrl = "";
+  File? _selectedAvatar;
+  final AuthService _authService = AuthService();
 
-  void _pickImage() async {
-    final imagePicker = ImagePicker();
-    XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
+  @override
+  void initState() {
+    _requestNotificationPermissions();
+    super.initState();
+  }
 
-    if (file != null) {
+  void _openImagePicker() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.camera);
+
+    if (image != null) {
       setState(() {
-        selectedImage = file;
+        _selectedAvatar = File(image.path);
       });
-
-      try {
-        // Resim seçildiğinde avatarUrl'i "abc" olarak atama işlemi
-        setState(() {
-          avatarUrl = "abc";
-        });
-      } catch (e) {
-        debugPrint("AvatarUrl atama hatası: $e");
-      }
     }
   }
 
-  void _addedAvatarUrl() async {
-    if (selectedImage != null) {
-      try {
-        await authService.addedAvatarUrl(avatarUrl: avatarUrl);
-        if (mounted) {
-          snackBar(context, "Avatar URL güncellendi: $avatarUrl",
-              bgColor: Colors.green);
-        }
-      } catch (e) {
-        if (mounted) {
-          snackBar(
-            context,
-            "Avatar URL güncelleme hatası: $e",
-          );
+  Future<UserModel?> _getUser() async {
+    try {
+      return await _authService.getUser();
+    } catch (e) {
+      debugPrint("Kullanıcı bilgisi alma hatası: $e");
+      return null;
+    }
+  }
+
+  void _uploadImage() async {
+    try {
+      if (_selectedAvatar != null) {
+        String? url =
+            await _authService.uploadImage(selectedAvatar: _selectedAvatar!);
+        if (url != null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Avatar başarıyla yüklendi."),
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Avatar yüklenirken bir hata oluştu."),
+              ),
+            );
+          }
         }
       }
+    } catch (e) {
+      debugPrint("Avatar yükleme hatası: $e");
+    }
+  }
+
+  void _signOut() async {
+    try {
+      await _authService.signOut();
+    } catch (e) {
+      debugPrint("Çıkış işlemi hatası: $e");
+    }
+  }
+
+  void _requestNotificationPermissions() async {
+    // FCM Token
+    FirebaseMessaging fcm = FirebaseMessaging.instance;
+    final permission = await fcm.requestPermission();
+
+    if (permission.authorizationStatus == AuthorizationStatus.authorized) {
+      // FCM Token
+      final token = await fcm.getToken();
+
+      // kullanıcı hangi grupta?
+      // TODO: User verisini fcm token ile güncelle.
+
+      await fcm.subscribeToTopic("mobil1a");
+
+      fcm.onTokenRefresh.listen((token) {
+        // update token in db.
+      });
+
+      debugPrint("Firebase Token: $token");
     }
   }
 
@@ -60,40 +104,61 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Ana Sayfa"),
+        title: const Text("Firebase App"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.exit_to_app),
-            onPressed: () async {
-              await authService.signOut();
-            },
-          ),
+          IconButton(onPressed: _signOut, icon: const Icon(Icons.logout))
         ],
       ),
       body: Center(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              InkWell(
-                onTap: _pickImage,
-                child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: selectedImage != null
-                        ? Image.file(File(selectedImage!.path)).image
+        child: FutureBuilder(
+          future: _getUser(),
+          builder: (context, AsyncSnapshot<UserModel?> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            } else if (snapshot.hasError) {
+              return Text("Hata: ${snapshot.error}");
+            } else if (!snapshot.hasData || snapshot.data == null) {
+              return const Text("Veri bulunamadı.");
+            } else {
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    foregroundImage: _selectedAvatar != null
+                        ? FileImage(_selectedAvatar!)
+                        : snapshot.data!.avatarUrl != null
+                            ? NetworkImage(snapshot.data!.avatarUrl!)
+                                as ImageProvider<Object>?
+                            : null,
+                    backgroundColor: _selectedAvatar == null &&
+                            snapshot.data!.avatarUrl == null
+                        ? Colors.deepOrange
                         : null,
-                    child: selectedImage == null
-                        ? const Icon(Icons.add_a_photo, size: 40)
-                        : null),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: _addedAvatarUrl,
-                child: const Text("Güncelle"),
-              ),
-            ],
-          ),
+                    radius: 40,
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      _openImagePicker();
+                    },
+                    icon: Icon((_selectedAvatar != null ||
+                            snapshot.data!.avatarUrl != null)
+                        ? Icons.update
+                        : Icons.add),
+                  ),
+                  if (_selectedAvatar != null)
+                    TextButton(
+                      onPressed: () {
+                        _uploadImage();
+                      },
+                      child: const Text("Yükle"),
+                    ),
+                  Text(
+                    "Hoşgeldiniz ${snapshot.data!.firstName} ${snapshot.data!.lastName}",
+                  ),
+                ],
+              );
+            }
+          },
         ),
       ),
     );
